@@ -7,6 +7,7 @@ services:
       - redis-data:/data
 
   backend:
+    image: ghcr.io/bearyjd/trailforge-backend:latest
     build: ./backend
     ports:
       - "8000:8000"
@@ -19,6 +20,7 @@ services:
       - redis
 
   worker:
+    image: ghcr.io/bearyjd/trailforge-backend:latest
     build: ./backend
     command: celery -A app.tasks.celery_app:celery_app worker --loglevel=info --concurrency=2
     environment:
@@ -30,6 +32,7 @@ services:
       - redis
 
   frontend:
+    image: ghcr.io/bearyjd/trailforge-frontend:latest
     build: ./frontend
     ports:
       - "3000:3000"

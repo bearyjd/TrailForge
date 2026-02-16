@@ -52,13 +52,37 @@ Generate custom Garmin maps from OpenStreetMap data. Select any area on an inter
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) (or Podman with docker-compose compatibility)
 - At least 6 GB of available RAM (Java tools need ~4 GB heap)
 
-### Run
+### Run with pre-built images
+
+Pre-built images are published to both **ghcr.io** and **Docker Hub** on every push to `main` and on version tags.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/trailforge.git
-cd trailforge
-docker-compose build
-docker-compose up
+git clone https://github.com/bearyjd/TrailForge.git
+cd TrailForge
+docker compose up
+```
+
+Docker Compose will automatically pull the pre-built images. To force a local build instead, run `docker compose up --build`.
+
+You can also pull images directly:
+
+```bash
+# From GitHub Container Registry
+docker pull ghcr.io/bearyjd/trailforge-backend:latest
+docker pull ghcr.io/bearyjd/trailforge-frontend:latest
+
+# From Docker Hub
+docker pull bearyj/trailforge-backend:latest
+docker pull bearyj/trailforge-frontend:latest
+```
+
+### Run from source
+
+```bash
+git clone https://github.com/bearyjd/TrailForge.git
+cd TrailForge
+docker compose build
+docker compose up
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -146,6 +170,19 @@ Configuration is via environment variables (set in `docker-compose.yml`):
 | `OVERPASS_URL`      | `https://overpass-api.de/api/interpreter`| Overpass API endpoint                |
 | `MAX_BBOX_AREA_DEG2`| `4.0`                                   | Max bounding box area in degrees²    |
 | `OVERPASS_TILE_DEG2`| `0.25`                                  | Max tile size for Overpass downloads  |
+
+## CI/CD — Docker Image Publishing
+
+A GitHub Actions workflow (`.github/workflows/docker-publish.yml`) automatically builds and pushes Docker images on every push to `main` and on version tags (`v*`).
+
+To enable Docker Hub publishing, add these secrets in your GitHub repo settings (**Settings > Secrets and variables > Actions**):
+
+| Secret              | Description              |
+|---------------------|--------------------------|
+| `DOCKERHUB_USERNAME`| Docker Hub username      |
+| `DOCKERHUB_TOKEN`   | Docker Hub access token  |
+
+ghcr.io publishing uses the built-in `GITHUB_TOKEN` and requires no extra configuration.
 
 ## Project Structure
 
