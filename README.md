@@ -170,6 +170,15 @@ Configuration is via environment variables (set in `docker-compose.yml`):
 | `OVERPASS_URL`      | `https://overpass-api.de/api/interpreter`| Overpass API endpoint                |
 | `MAX_BBOX_AREA_DEG2`| `4.0`                                   | Max bounding box area in degrees²    |
 | `OVERPASS_TILE_DEG2`| `0.25`                                  | Max tile size for Overpass downloads  |
+| `VITE_ALLOWED_HOSTS`| *(empty)*                               | Comma-separated hostnames allowed by the Vite dev server (required when using a custom domain or reverse proxy) |
+
+To set environment variables, copy the example file and edit it:
+
+```bash
+cp .env.example .env
+```
+
+The `.env` file is gitignored and will not be committed.
 
 ## CI/CD — Docker Image Publishing
 
