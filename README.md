@@ -52,40 +52,46 @@ Generate custom Garmin maps from OpenStreetMap data. Select any area on an inter
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) (or Podman with docker-compose compatibility)
 - At least 6 GB of available RAM (Java tools need ~4 GB heap)
 
-### Run with pre-built images
+### Run
 
-Pre-built images are published to both **ghcr.io** and **Docker Hub** on every push to `main` and on version tags.
+Pre-built images are published to both **ghcr.io** and **Docker Hub** on every push to `main` and on version tags. Only two files are needed on the server: `docker-compose.prod.yml` and `.env`.
+
+1. Download the production compose file:
+   ```bash
+   mkdir trailforge && cd trailforge
+   curl -O https://raw.githubusercontent.com/bearyjd/TrailForge/main/docker-compose.prod.yml
+   ```
+
+2. Create a `.env` file with any needed configuration (see [Configuration](#configuration)):
+   ```bash
+   # Optional — only needed if serving behind a custom domain
+   echo "VITE_ALLOWED_HOSTS=your.domain.com" > .env
+   ```
+
+3. Start the services:
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+To update to the latest images:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### Build from source
+
+For local development or customization:
 
 ```bash
 git clone https://github.com/bearyjd/TrailForge.git
 cd TrailForge
-docker compose up
+cp .env.example .env    # edit as needed
+docker compose up --build
 ```
-
-Docker Compose will automatically pull the pre-built images. To force a local build instead, run `docker compose up --build`.
-
-You can also pull images directly:
-
-```bash
-# From GitHub Container Registry
-docker pull ghcr.io/bearyjd/trailforge-backend:latest
-docker pull ghcr.io/bearyjd/trailforge-frontend:latest
-
-# From Docker Hub
-docker pull bearyj/trailforge-backend:latest
-docker pull bearyj/trailforge-frontend:latest
-```
-
-### Run from source
-
-```bash
-git clone https://github.com/bearyjd/TrailForge.git
-cd TrailForge
-docker compose build
-docker compose up
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Usage
 
@@ -197,7 +203,9 @@ ghcr.io publishing uses the built-in `GITHUB_TOKEN` and requires no extra config
 
 ```
 trailforge/
-├── docker-compose.yml          # Service orchestration
+├── docker-compose.yml          # Service orchestration (local dev)
+├── docker-compose.prod.yml     # Production deployment (pull only)
+├── .env.example                # Environment variable template
 ├── README.md
 ├── CONTRIBUTING.md
 ├── LICENSE

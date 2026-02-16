@@ -1,0 +1,43 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  backend:
+    image: ghcr.io/bearyjd/trailforge-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATA_DIR=/data/jobs
+    volumes:
+      - job-data:/data/jobs
+    depends_on:
+      - redis
+
+  worker:
+    image: ghcr.io/bearyjd/trailforge-backend:latest
+    command: celery -A app.tasks.celery_app:celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATA_DIR=/data/jobs
+    volumes:
+      - job-data:/data/jobs
+    depends_on:
+      - redis
+
+  frontend:
+    image: ghcr.io/bearyjd/trailforge-frontend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-}
+    depends_on:
+      - backend
+
+volumes:
+  redis-data:
+  job-data:
