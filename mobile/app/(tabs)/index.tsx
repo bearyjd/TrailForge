@@ -1,21 +1,59 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, Alert } from 'react-native';
 import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
+import { router } from 'expo-router';
 import { SearchBar } from '@/components/SearchBar';
 import { TrailMap } from '@/components/TrailMap';
 import { TrailBottomSheet } from '@/components/TrailBottomSheet';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { RecordingFAB } from '@/components/RecordingFAB';
 import { useMapStore } from '@/stores/mapStore';
+import { useRecordingStore } from '@/stores/recordingStore';
+import { useSavedRoutesStore } from '@/stores/savedRoutesStore';
 import { searchTrails, geocodePlace } from '@/api/trailApi';
 import { useDebounce } from '@/hooks/useDebounce';
 import { MAX_BBOX_AREA_DEG2 } from '@/constants';
+import { LOCATION_TASK, startLocationUpdates, stopLocationUpdates } from '@/tasks/locationTask';
 import type { Trail, BBox } from '@/types/trail';
+import type { SavedRoute } from '@/types/route';
 
 export default function ExploreScreen() {
   const { setBbox, setLoading, setSelectedTrailId } = useMapStore();
+  const { isRecording, startTime, startRecording, stopRecording, getStats, clearRoute } = useRecordingStore();
+  const { saveRoute } = useSavedRoutesStore();
   const [trails, setTrails] = useState<Trail[]>([]);
   const [selectedTrail, setSelectedTrail] = useState<Trail | null>(null);
   const [tooBig, setTooBig] = useState(false);
+  const [saveDialogVisible, setSaveDialogVisible] = useState(false);
+  const [routeName, setRouteName] = useState('');
+
+  // Crash recovery: if store says recording but task is not registered
+  useEffect(() => {
+    if (!isRecording) return;
+    TaskManager.isTaskRegisteredAsync(LOCATION_TASK).then((registered) => {
+      if (registered) return;
+      Alert.alert(
+        'Unfinished route found',
+        'A route was being recorded when the app closed.',
+        [
+          {
+            text: 'Resume recording',
+            onPress: () => startLocationUpdates(),
+          },
+          {
+            text: 'Save & stop',
+            onPress: () => { stopRecording(); setSaveDialogVisible(true); },
+          },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => { stopRecording(); clearRoute(); },
+          },
+        ]
+      );
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadTrails = useCallback(async (bbox: BBox) => {
     const area = Math.abs(bbox.north - bbox.south) * Math.abs(bbox.east - bbox.west);
@@ -60,6 +98,43 @@ export default function ExploreScreen() {
     loadTrails(bbox);
   }, [loadTrails]);
 
+  const handleStartRecording = useCallback(async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Location required', 'Enable location access to record routes.');
+      return;
+    }
+    startRecording();
+    await startLocationUpdates();
+  }, [startRecording]);
+
+  const handleStopRecording = useCallback(async () => {
+    await stopLocationUpdates();
+    stopRecording();
+    setSaveDialogVisible(true);
+    setRouteName('');
+  }, [stopRecording]);
+
+  const handleSaveRoute = useCallback(() => {
+    const stats = getStats();
+    const route: SavedRoute = {
+      id: `route-${Date.now()}`,
+      name: routeName.trim() || 'My Route',
+      points: useRecordingStore.getState().currentRoute,
+      ...stats,
+      created_at: Date.now(),
+    };
+    saveRoute(route);
+    clearRoute();
+    setSaveDialogVisible(false);
+    router.push(`/route/${route.id}`);
+  }, [routeName, getStats, saveRoute, clearRoute]);
+
+  const handleDiscardRoute = useCallback(() => {
+    clearRoute();
+    setSaveDialogVisible(false);
+  }, [clearRoute]);
+
   return (
     <View style={styles.container}>
       <OfflineBanner />
@@ -77,10 +152,39 @@ export default function ExploreScreen() {
       <TouchableOpacity style={styles.nearMe} onPress={handleNearMe}>
         <Text style={styles.nearMeText}>📍 Near Me</Text>
       </TouchableOpacity>
+      <RecordingFAB
+        isRecording={isRecording}
+        startTime={startTime}
+        onStart={handleStartRecording}
+        onStop={handleStopRecording}
+      />
       <TrailBottomSheet
         trail={selectedTrail}
         onDismiss={() => { setSelectedTrail(null); setSelectedTrailId(null); }}
       />
+
+      <Modal visible={saveDialogVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Save Route</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Route name"
+              value={routeName}
+              onChangeText={setRouteName}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.discardBtn} onPress={handleDiscardRoute}>
+                <Text style={styles.discardText}>Discard</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveRoute}>
+                <Text style={styles.saveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -91,4 +195,13 @@ const styles = StyleSheet.create({
   tooBigText: { color: '#fff', fontWeight: '600' },
   nearMe: { position: 'absolute', bottom: 32, right: 16, backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
   nearMeText: { fontWeight: '600', fontSize: 14 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 16 },
+  modalButtons: { flexDirection: 'row', gap: 12 },
+  discardBtn: { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#999', alignItems: 'center' },
+  discardText: { color: '#666', fontWeight: '600' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: 10, backgroundColor: '#2979c0', alignItems: 'center' },
+  saveText: { color: '#fff', fontWeight: '600' },
 });
