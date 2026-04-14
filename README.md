@@ -173,7 +173,8 @@ Configuration is via environment variables (set in `docker-compose.yml`):
 | `DATA_DIR`          | `/data/jobs`                             | Directory for job output files       |
 | `MKGMAP_JAR`        | `/opt/mkgmap/mkgmap.jar`                 | Path to mkgmap JAR                   |
 | `SPLITTER_JAR`      | `/opt/splitter/splitter.jar`             | Path to splitter JAR                 |
-| `OVERPASS_URL`      | `https://overpass-api.de/api/interpreter`| Overpass API endpoint                |
+| `OVERPASS_URL`      | `https://overpass-api.de/api/interpreter`| Primary Overpass API endpoint        |
+| `OVERPASS_MIRRORS`  | `https://overpass.kumi.systems/api/interpreter,https://maps.mail.ru/osm/tools/overpass/api/interpreter` | Comma-separated fallback Overpass mirrors used on timeout or gateway errors |
 | `MAX_BBOX_AREA_DEG2`| `4.0`                                   | Max bounding box area in degrees²    |
 | `OVERPASS_TILE_DEG2`| `0.25`                                  | Max tile size for Overpass downloads  |
 | `VITE_ALLOWED_HOSTS`| *(empty)*                               | Comma-separated hostnames allowed by the Vite dev server (required when using a custom domain or reverse proxy) |

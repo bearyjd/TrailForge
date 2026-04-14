@@ -9,14 +9,20 @@ import os
 import subprocess
 import time
 
+import logging
+
 import httpx
-from app.config import OVERPASS_URL, OVERPASS_TILE_DEG2
+from app.config import OVERPASS_URL, OVERPASS_TILE_DEG2, OVERPASS_MIRRORS
+
+logger = logging.getLogger(__name__)
+
+_GATEWAY_CODES = {502, 503, 504, 429}
 
 
 def _build_query(south: float, west: float, north: float, east: float) -> str:
     """Build an Overpass QL query for a single bbox tile."""
     return f"""
-    [out:xml][timeout:300];
+    [out:xml][timeout:600];
     (
       node({south},{west},{north},{east});
       way({south},{west},{north},{east});
@@ -79,27 +85,64 @@ def _compute_tiles(bbox: dict, max_tile_area: float) -> list[dict]:
     return tiles
 
 
+def _is_retriable(exc: Exception) -> bool:
+    """Return True if the error is a timeout or gateway issue worth retrying."""
+    if isinstance(exc, httpx.TimeoutException):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code in _GATEWAY_CODES:
+        return True
+    return False
+
+
+def _try_url(url: str, query: str, output_path: str) -> bool:
+    """Attempt to download from a single Overpass URL. Returns True on success."""
+    try:
+        with httpx.Client(timeout=600) as client:
+            resp = client.post(url, data={"data": query})
+            resp.raise_for_status()
+        with open(output_path, "wb") as f:
+            f.write(resp.content)
+        return True
+    except (httpx.HTTPError, httpx.TimeoutException) as exc:
+        logger.warning("Overpass request to %s failed: %s", url, exc)
+        raise
+
+
 def _download_tile(tile: dict, output_path: str) -> None:
     """Download a single Overpass tile to a file.
 
-    Retries once after a 5-second pause if the first attempt fails,
-    to handle Overpass rate limiting gracefully.
+    Tries the primary Overpass URL first with retries, then falls back
+    to mirror servers on timeout or gateway errors.
     """
     query = _build_query(tile["south"], tile["west"], tile["north"], tile["east"])
 
+    # Try primary URL with retries
+    last_exc = None
     for attempt in range(2):
         try:
-            with httpx.Client(timeout=360) as client:
-                resp = client.post(OVERPASS_URL, data={"data": query})
-                resp.raise_for_status()
-            with open(output_path, "wb") as f:
-                f.write(resp.content)
+            _try_url(OVERPASS_URL, query, output_path)
             return
-        except (httpx.HTTPError, httpx.TimeoutException):
-            if attempt == 0:
-                time.sleep(5)
-            else:
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            last_exc = exc
+            if not _is_retriable(exc):
                 raise
+            logger.info("Primary Overpass attempt %d failed, retrying...", attempt + 1)
+            time.sleep(10 * (attempt + 1))
+
+    # Primary exhausted — try each mirror once
+    for mirror in OVERPASS_MIRRORS:
+        logger.info("Falling back to mirror: %s", mirror)
+        try:
+            _try_url(mirror, query, output_path)
+            return
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            last_exc = exc
+            if not _is_retriable(exc):
+                raise
+            time.sleep(5)
+
+    # All mirrors exhausted
+    raise last_exc
 
 
 def download_osm_data(bbox: dict, job_dir: str, progress_callback=None) -> str:

@@ -21,6 +21,17 @@ SPLITTER_JAR = os.getenv("SPLITTER_JAR", "/opt/splitter/splitter.jar")
 # Overpass API endpoint for downloading raw OSM data
 OVERPASS_URL = os.getenv("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
 
+# Comma-separated list of fallback Overpass mirrors used when the primary times out
+OVERPASS_MIRRORS = [
+    url.strip()
+    for url in os.getenv(
+        "OVERPASS_MIRRORS",
+        "https://overpass.kumi.systems/api/interpreter,"
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+    ).split(",")
+    if url.strip()
+]
+
 # Maximum bounding-box area in square degrees (~40,000 km² at mid-latitudes)
 MAX_BBOX_AREA_DEG2 = float(os.getenv("MAX_BBOX_AREA_DEG2", "4.0"))
 
