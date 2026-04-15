@@ -8,6 +8,7 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="trail/[id]" options={{ title: 'Trail Details' }} />
+        <Stack.Screen name="route/[id]" options={{ title: 'Route' }} />
         <Stack.Screen name="offline" options={{ title: 'Offline Maps' }} />
       </Stack>
     </GestureHandlerRootView>
