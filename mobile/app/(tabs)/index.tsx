@@ -31,7 +31,7 @@ export default function ExploreScreen() {
   // Crash recovery: if store says recording but task is not registered
   useEffect(() => {
     if (!isRecording) return;
-    TaskManager.isTaskRegisteredAsync(LOCATION_TASK).then((registered) => {
+    TaskManager.isTaskRegisteredAsync(LOCATION_TASK).then((registered: boolean) => {
       if (registered) return;
       Alert.alert(
         'Unfinished route found',

@@ -91,7 +91,7 @@ export default function TrailDetailScreen() {
         bounds: [[bounds[0], bounds[1]], [bounds[2], bounds[3]]],
         minZoom: 12,
         maxZoom: 17,
-      }, (_, status) => {
+      }, (_pack: unknown, status: { percentage?: number } | null) => {
         if (status?.percentage === 100) {
           updatePackStatus(packId, 'complete');
         }

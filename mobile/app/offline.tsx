@@ -66,7 +66,7 @@ export default function OfflineManagerScreen() {
           r.pmtiles_url,
           localPath,
           {},
-          (progress) => {
+          (progress: { totalBytesWritten: number; totalBytesExpectedToWrite: number }) => {
             const pct = progress.totalBytesExpectedToWrite > 0
               ? progress.totalBytesWritten / progress.totalBytesExpectedToWrite
               : 0;
