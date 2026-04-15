@@ -1,12 +1,28 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Share, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import { DifficultyBadge } from '@/components/DifficultyBadge';
 import { useSavedStore } from '@/stores/savedStore';
+import { useOfflineStore } from '@/stores/offlineStore';
 import { fetchTrail, exportTrailToGarmin, pollJobStatus } from '@/api/trailApi';
+import { TILE_STYLE_URL } from '@/constants';
 import type { Trail } from '@/types/trail';
 
 type ExportState = 'idle' | 'loading' | 'done' | 'error';
+
+const DEG_PER_500M = 500 / 111_000;
+
+function getTrailBbox(trail: Trail): [number, number, number, number] {
+  const coords = trail.geometry?.coordinates ?? [];
+  const lats = coords.map(([, lat]: number[]) => lat);
+  const lons = coords.map(([lon]: number[]) => lon);
+  const minLat = Math.min(...lats) - DEG_PER_500M;
+  const maxLat = Math.max(...lats) + DEG_PER_500M;
+  const minLon = Math.min(...lons) - DEG_PER_500M;
+  const maxLon = Math.max(...lons) + DEG_PER_500M;
+  return [minLon, minLat, maxLon, maxLat];
+}
 
 export default function TrailDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -16,6 +32,12 @@ export default function TrailDetailScreen() {
   const [loadError, setLoadError] = useState(false);
   const [exportState, setExportState] = useState<ExportState>('idle');
   const [exportProgress, setExportProgress] = useState('');
+
+  const { addPack, updatePackStatus, hasPack, packs } = useOfflineStore();
+  const packId = `trail-${id}`;
+  const pack = packs[packId];
+  const isDownloaded = hasPack(packId);
+  const isDownloading = pack?.status === 'downloading';
 
   useEffect(() => {
     fetchTrail(id)
@@ -49,6 +71,35 @@ export default function TrailDetailScreen() {
       Alert.alert('Export failed', 'Could not start the export. Check your connection.');
     }
   }, [trail]);
+
+  const handleDownloadOffline = useCallback(async () => {
+    if (!trail || isDownloaded || isDownloading) return;
+    addPack({
+      id: packId,
+      name: trail.name,
+      type: 'trail-local',
+      trail_id: id,
+      size_bytes: 0,
+      downloaded_at: 0,
+      status: 'downloading',
+    });
+    try {
+      const bounds = getTrailBbox(trail);
+      await MapLibreGL.offlineManager.createPack({
+        name: packId,
+        styleURL: TILE_STYLE_URL,
+        bounds: [[bounds[0], bounds[1]], [bounds[2], bounds[3]]],
+        minZoom: 12,
+        maxZoom: 17,
+      }, (_, status) => {
+        if (status?.percentage === 100) {
+          updatePackStatus(packId, 'complete');
+        }
+      });
+    } catch {
+      updatePackStatus(packId, 'error');
+    }
+  }, [trail, packId, isDownloaded, isDownloading, addPack, updatePackStatus, id]);
 
   if (loadError) {
     return <View style={styles.center}><Text>Trail not found.</Text></View>;
@@ -103,6 +154,16 @@ export default function TrailDetailScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity
+        style={[styles.btn, styles.btnOffline, (isDownloaded || isDownloading) && styles.btnDisabled]}
+        onPress={handleDownloadOffline}
+        disabled={isDownloaded || isDownloading}
+      >
+        <Text style={styles.btnText}>
+          {isDownloaded ? '✓ Downloaded' : isDownloading ? 'Downloading…' : 'Download for offline'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={[styles.btn, styles.btnOutline]}
         onPress={() => Alert.alert('Coming soon', 'Trail sharing arrives in sub-project 3.')}
       >
@@ -134,6 +195,7 @@ const styles = StyleSheet.create({
   btn: { marginHorizontal: 16, marginTop: 12, padding: 14, borderRadius: 10, alignItems: 'center' },
   btnPrimary: { backgroundColor: '#2979c0' },
   btnGarmin: { backgroundColor: '#1a6e34' },
+  btnOffline: { backgroundColor: '#5a4fcf' },
   btnOutline: { borderWidth: 1.5, borderColor: '#2979c0' },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#fff', fontWeight: '600', fontSize: 15 },

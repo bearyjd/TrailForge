@@ -14,6 +14,7 @@ module.exports = {
     '^expo-task-manager$': '<rootDir>/__mocks__/expo-task-manager.js',
     '^expo-file-system$': '<rootDir>/__mocks__/expo-file-system.js',
     '^expo-sharing$': '<rootDir>/__mocks__/expo-sharing.js',
+    '^@maplibre/maplibre-react-native$': '<rootDir>/__mocks__/@maplibre/maplibre-react-native.js',
     '^@testing-library/react-native$': '<rootDir>/node_modules/@testing-library/react-native/build/index.js',
   },
   transformIgnorePatterns: [
