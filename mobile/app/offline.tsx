@@ -4,7 +4,6 @@ import * as FileSystem from 'expo-file-system';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { useOfflineStore } from '@/stores/offlineStore';
 import { REGIONS } from '@/constants/regions';
-import { TILE_STYLE_URL } from '@/constants';
 
 export default function OfflineManagerScreen() {
   const { packs, downloadProgress, addPack, updatePackStatus, updateProgress, deletePack } = useOfflineStore();
