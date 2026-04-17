@@ -7,9 +7,9 @@ import { supabase } from '@/lib/supabase';
 import { useCommunityStore } from '@/stores/communityStore';
 
 export default function RootLayout() {
-  const setSession = useCommunityStore((s) => s.setSession);
-
   useEffect(() => {
+    const setSession = useCommunityStore.getState().setSession;
+
     // Hydrate session from storage on start
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -17,11 +17,11 @@ export default function RootLayout() {
 
     // Keep store in sync whenever auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      useCommunityStore.getState().setSession(session);
     });
 
     return () => subscription.unsubscribe();
-  }, [setSession]);
+  }, []);
 
   useEffect(() => {
     // Handle magic link deep link: trailforge://#access_token=...&refresh_token=...
@@ -37,9 +37,10 @@ export default function RootLayout() {
       }
     };
 
-    Linking.getInitialURL().then((url: string | null) => { if (url) handleUrl(url); });
+    let cancelled = false;
+    Linking.getInitialURL().then((url: string | null) => { if (!cancelled && url) handleUrl(url); });
     const sub = Linking.addEventListener('url', ({ url }: { url: string }) => handleUrl(url));
-    return () => sub.remove();
+    return () => { cancelled = true; sub.remove(); };
   }, []);
 
   return (
