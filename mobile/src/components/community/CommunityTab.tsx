@@ -20,7 +20,9 @@ export function CommunityTab({ osmTrailId, onSignInPress }: Props) {
   const [conditionSheetVisible, setConditionSheetVisible] = useState(false);
 
   useEffect(() => {
-    fetchCommunityData(osmTrailId);
+    fetchCommunityData(osmTrailId).catch(() => {
+      // network/Supabase error — empty state will show
+    });
   }, [osmTrailId, fetchCommunityData]);
 
   const avgRating =
@@ -28,7 +30,11 @@ export function CommunityTab({ osmTrailId, onSignInPress }: Props) {
       ? (ratings.reduce((sum, r) => sum + r.stars, 0) / ratings.length).toFixed(1)
       : null;
 
-  const latestCondition = conditions.length > 0 ? conditions[0] : null;
+  const latestCondition = conditions.length > 0
+    ? [...conditions].sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0]
+    : null;
 
   const handleRatePress = () => {
     if (!session) { onSignInPress(); return; }

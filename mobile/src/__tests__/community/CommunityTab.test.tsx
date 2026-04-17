@@ -80,4 +80,16 @@ describe('CommunityTab', () => {
     render(<CommunityTab osmTrailId="trail-42" onSignInPress={jest.fn()} />);
     expect(baseStore.fetchCommunityData).toHaveBeenCalledWith('trail-42');
   });
+
+  it('opens rating sheet when authenticated and Rate Trail is tapped', () => {
+    const store = { ...baseStore, session: { user: { id: 'u1' } } as never };
+    mockStore.mockImplementation((selector: (s: typeof store) => unknown) => selector(store));
+
+    const { getByText, queryByTestId } = render(
+      <CommunityTab osmTrailId="trail-42" onSignInPress={jest.fn()} />
+    );
+    fireEvent.press(getByText('Rate Trail'));
+    // SubmitRatingSheet mock renders a View with testID="bottom-sheet" when visible
+    expect(queryByTestId('bottom-sheet')).toBeTruthy();
+  });
 });
