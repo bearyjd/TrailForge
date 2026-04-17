@@ -1,9 +1,11 @@
-const store = {};
-
 module.exports = {
-  getItem: jest.fn((key) => Promise.resolve(store[key] ?? null)),
-  setItem: jest.fn((key, value) => { store[key] = value; return Promise.resolve(); }),
-  removeItem: jest.fn((key) => { delete store[key]; return Promise.resolve(); }),
-  clear: jest.fn(() => { Object.keys(store).forEach(k => delete store[k]); return Promise.resolve(); }),
-  getAllKeys: jest.fn(() => Promise.resolve(Object.keys(store))),
+  setItem: jest.fn().mockResolvedValue(null),
+  getItem: jest.fn().mockResolvedValue(null),
+  removeItem: jest.fn().mockResolvedValue(null),
+  mergeItem: jest.fn().mockResolvedValue(null),
+  clear: jest.fn().mockResolvedValue(null),
+  getAllKeys: jest.fn().mockResolvedValue([]),
+  multiGet: jest.fn().mockResolvedValue([]),
+  multiSet: jest.fn().mockResolvedValue(null),
+  multiRemove: jest.fn().mockResolvedValue(null),
 };
