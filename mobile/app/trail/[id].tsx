@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Share, StyleSheet, Alert } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { DifficultyBadge } from '@/components/DifficultyBadge';
+import { CommunityTab } from '@/components/community/CommunityTab';
 import { useSavedStore } from '@/stores/savedStore';
 import { useOfflineStore } from '@/stores/offlineStore';
 import { fetchTrail, exportTrailToGarmin, pollJobStatus } from '@/api/trailApi';
@@ -163,12 +164,12 @@ export default function TrailDetailScreen() {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.btn, styles.btnOutline]}
-        onPress={() => Alert.alert('Coming soon', 'Trail sharing arrives in sub-project 3.')}
-      >
-        <Text style={styles.btnTextOutline}>Share Trail</Text>
-      </TouchableOpacity>
+      <View style={styles.divider} />
+
+      <CommunityTab
+        osmTrailId={trail.id}
+        onSignInPress={() => router.push('/auth')}
+      />
     </ScrollView>
   );
 }
@@ -201,4 +202,5 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
   btnTextOutline: { color: '#2979c0', fontWeight: '600', fontSize: 15 },
   exportLoading: { flexDirection: 'row', alignItems: 'center' },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#eee', marginTop: 16 },
 });
