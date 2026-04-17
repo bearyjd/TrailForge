@@ -8,6 +8,8 @@ const ScrollView = ({ children, ...props }) => React.createElement('ScrollView',
 const TouchableOpacity = ({ children, onPress, disabled, ...props }) =>
   React.createElement('TouchableOpacity', { onClick: disabled ? undefined : onPress, ...props }, children);
 const ActivityIndicator = (props) => React.createElement('ActivityIndicator', props);
+const TextInput = ({ onChangeText, value, ...props }) =>
+  React.createElement('TextInput', { onChange: (e) => onChangeText && onChangeText(e.nativeEvent.text), value, ...props });
 
 const StyleSheet = {
   create: (styles) => styles,
@@ -34,6 +36,7 @@ module.exports = {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
   StyleSheet,
   Alert,
   Share,
@@ -44,6 +47,7 @@ module.exports = {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
+    TextInput,
     StyleSheet,
     Alert,
     Share,
