@@ -10,6 +10,7 @@ export default function RootLayout() {
         <Stack.Screen name="trail/[id]" options={{ title: 'Trail Details' }} />
         <Stack.Screen name="route/[id]" options={{ title: 'Route' }} />
         <Stack.Screen name="offline" options={{ title: 'Offline Maps' }} />
+        <Stack.Screen name="auth" options={{ title: 'Sign In', presentation: 'modal' }} />
       </Stack>
     </GestureHandlerRootView>
   );
