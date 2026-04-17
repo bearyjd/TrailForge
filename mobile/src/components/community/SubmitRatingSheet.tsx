@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -20,18 +20,20 @@ interface Props {
 
 export function SubmitRatingSheet({ osmTrailId, visible, onDismiss }: Props) {
   const sheetRef = useRef<BottomSheet>(null);
+  const submitting = useRef(false);
   const submitRating = useCommunityStore((s) => s.submitRating);
   const [stars, setStars] = useState(0);
   const [review, setReview] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (visible) sheetRef.current?.expand();
-    else sheetRef.current?.close();
-  }, [visible]);
-
   const handleChange = useCallback(
-    (index: number) => { if (index === -1) onDismiss(); },
+    (index: number) => {
+      if (index === -1) {
+        setStars(0);
+        setReview('');
+        onDismiss();
+      }
+    },
     [onDismiss]
   );
 
@@ -40,6 +42,8 @@ export function SubmitRatingSheet({ osmTrailId, visible, onDismiss }: Props) {
       Alert.alert('Pick a rating', 'Please select 1–5 stars before submitting.');
       return;
     }
+    if (submitting.current) return;
+    submitting.current = true;
     setLoading(true);
     try {
       await submitRating(osmTrailId, stars, review.trim() || undefined);
@@ -50,15 +54,14 @@ export function SubmitRatingSheet({ osmTrailId, visible, onDismiss }: Props) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Submission failed — try again');
     } finally {
       setLoading(false);
+      submitting.current = false;
     }
   };
-
-  if (!visible) return null;
 
   return (
     <BottomSheet
       ref={sheetRef}
-      index={-1}
+      index={visible ? 0 : -1}
       snapPoints={['50%']}
       enablePanDownToClose
       onChange={handleChange}

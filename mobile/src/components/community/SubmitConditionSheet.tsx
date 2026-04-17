@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -24,18 +24,20 @@ interface Props {
 
 export function SubmitConditionSheet({ osmTrailId, visible, onDismiss }: Props) {
   const sheetRef = useRef<BottomSheet>(null);
+  const submitting = useRef(false);
   const submitCondition = useCommunityStore((s) => s.submitCondition);
   const [selected, setSelected] = useState<ConditionTag | null>(null);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (visible) sheetRef.current?.expand();
-    else sheetRef.current?.close();
-  }, [visible]);
-
   const handleChange = useCallback(
-    (index: number) => { if (index === -1) onDismiss(); },
+    (index: number) => {
+      if (index === -1) {
+        setSelected(null);
+        setNote('');
+        onDismiss();
+      }
+    },
     [onDismiss]
   );
 
@@ -44,6 +46,8 @@ export function SubmitConditionSheet({ osmTrailId, visible, onDismiss }: Props) 
       Alert.alert('Pick a condition', 'Please select a condition tag before submitting.');
       return;
     }
+    if (submitting.current) return;
+    submitting.current = true;
     setLoading(true);
     try {
       await submitCondition(osmTrailId, selected, note.trim() || undefined);
@@ -54,15 +58,14 @@ export function SubmitConditionSheet({ osmTrailId, visible, onDismiss }: Props) 
       Alert.alert('Error', err instanceof Error ? err.message : 'Submission failed — try again');
     } finally {
       setLoading(false);
+      submitting.current = false;
     }
   };
-
-  if (!visible) return null;
 
   return (
     <BottomSheet
       ref={sheetRef}
-      index={-1}
+      index={visible ? 0 : -1}
       snapPoints={['55%']}
       enablePanDownToClose
       onChange={handleChange}
@@ -103,7 +106,7 @@ export function SubmitConditionSheet({ osmTrailId, visible, onDismiss }: Props) 
 const styles = StyleSheet.create({
   content: { padding: 16 },
   heading: { fontSize: 17, fontWeight: '600', marginBottom: 12 },
-  tags: { flexDirection: 'row', marginBottom: 12 },
+  tags: { marginBottom: 12 },
   tagWrap: { marginRight: 8, opacity: 0.6 },
   tagSelected: { opacity: 1, transform: [{ scale: 1.05 }] },
   input: {
