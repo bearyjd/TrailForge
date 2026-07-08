@@ -38,3 +38,8 @@ dist/
 
 # Build prompts
 garmin_osm_builder_prompt.md
+
+# Local Claude/OMC session state
+.claude/settings.local.json
+.omc/
+mobile/.omc/
