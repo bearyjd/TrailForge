@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
+import { consumeAuthDeepLink } from '@/lib/authDeepLink';
 import { useCommunityStore } from '@/stores/communityStore';
 
 export default function RootLayout() {
@@ -25,16 +26,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Handle magic link deep link: trailforge://#access_token=...&refresh_token=...
-    const handleUrl = (url: string) => {
-      const fragment = url.split('#')[1];
-      if (!fragment) return;
-      const params = Object.fromEntries(new URLSearchParams(fragment));
-      if (params.access_token && params.refresh_token) {
-        supabase.auth.setSession({
-          access_token: params.access_token,
-          refresh_token: params.refresh_token,
-        });
-      }
+    const handleUrl = async (url: string) => {
+      const tokens = await consumeAuthDeepLink(url);
+      if (tokens) await supabase.auth.setSession(tokens);
     };
 
     let cancelled = false;
