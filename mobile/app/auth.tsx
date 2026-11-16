@@ -31,7 +31,7 @@ export default function AuthScreen() {
     if (error) {
       Alert.alert('Error', "Couldn't send link — check your email address");
     } else {
-      await markLoginPending();
+      await markLoginPending(trimmed);
       setSent(true);
     }
   };
