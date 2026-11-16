@@ -64,10 +64,13 @@ Pre-built images are published to both **ghcr.io** and **Docker Hub** on every p
 
 2. Create a `.env` file with any needed configuration (see [Configuration](#configuration)):
    ```bash
-   echo "REDIS_PASSWORD=$(openssl rand -hex 24)" > .env
+   # Append only if missing, so an existing .env (e.g. VITE_ALLOWED_HOSTS) is preserved
+   grep -q '^REDIS_PASSWORD=' .env 2>/dev/null || echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> .env
    # Optional — only needed if serving behind a custom domain
    echo "VITE_ALLOWED_HOSTS=your.domain.com" >> .env
    ```
+
+   > **Breaking change:** `REDIS_PASSWORD` is now required. Existing deployments that upgrade without it set will fail to start.
 
 3. Start the services:
    ```bash
