@@ -1,11 +1,11 @@
 """Celery task that orchestrates the full OSM-to-Garmin-IMG pipeline."""
 
 import os
-import shutil
 
-from app.config import DATA_DIR
+from app.config import DATA_DIR, JOB_RETENTION_HOURS
 from app.tasks.celery_app import celery_app
 from app.services.osm_downloader import download_osm_data
+from app.services.job_cleanup import cleanup_old_jobs
 from app.services.map_compiler import convert_to_pbf, run_splitter, run_mkgmap
 
 
@@ -28,6 +28,9 @@ def generate_map(self, bbox: dict):
     Raises:
         FileNotFoundError: If mkgmap does not produce the expected output.
     """
+    # Expire old job directories (including failed ones kept for debugging)
+    cleanup_old_jobs(DATA_DIR, JOB_RETENTION_HOURS)
+
     job_dir = os.path.join(DATA_DIR, self.request.id)
     os.makedirs(job_dir, exist_ok=True)
 
@@ -58,5 +61,5 @@ def generate_map(self, bbox: dict):
         return {"filename": "gmapsupp.img"}
 
     except Exception as e:
-        # Keep the job directory around for post-mortem debugging
+        # Keep the job directory for post-mortem debugging; retention cleanup expires it
         raise e

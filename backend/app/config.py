@@ -12,6 +12,9 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 # Root directory where per-job working directories are created
 DATA_DIR = os.getenv("DATA_DIR", "/data/jobs")
 
+# Hours to keep job directories before they are deleted (0 disables cleanup)
+JOB_RETENTION_HOURS = float(os.getenv("JOB_RETENTION_HOURS", "24"))
+
 # Path to the mkgmap JAR (converts OSM data to Garmin IMG format)
 MKGMAP_JAR = os.getenv("MKGMAP_JAR", "/opt/mkgmap/mkgmap.jar")
 
