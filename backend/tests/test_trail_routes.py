@@ -63,3 +63,28 @@ def test_export_trail_enqueues_job():
     data = resp.json()
     assert data["job_id"] == "celery-job-abc"
     assert data["status"] == "queued"
+
+
+def _export_with_coords(coords):
+    feature = _SAMPLE_FEATURE.model_copy(
+        update={"geometry": {"type": "LineString", "coordinates": coords}}
+    )
+    with patch("app.api.trail_routes.fetch_trail") as mock_fetch, \
+         patch("app.api.trail_routes.generate_map") as mock_task:
+        mock_fetch.return_value = TrailDetail(**feature.model_dump())
+        resp = client.post("/api/trails/way_1/export/garmin")
+    return resp, mock_task
+
+
+def test_export_trail_rejects_oversized_bbox():
+    resp, mock_task = _export_with_coords([[0.0, 0.0], [10.0, 10.0]])
+    assert resp.status_code == 400
+    assert "exceeds maximum" in resp.json()["detail"]
+    mock_task.delay.assert_not_called()
+
+
+def test_export_trail_rejects_degenerate_bbox():
+    resp, mock_task = _export_with_coords([[8.5, 47.1], [8.5, 47.1]])
+    assert resp.status_code == 400
+    assert "too small" in resp.json()["detail"]
+    mock_task.delay.assert_not_called()

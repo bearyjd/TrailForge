@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.config import MAX_BBOX_AREA_DEG2
+from app.models.schemas import BBox
 from app.models.trail_schemas import TrailDetail, TrailExportResponse, TrailSearchResponse
 from app.services.trail_search import fetch_trail, search_trails
 from app.tasks.map_tasks import generate_map
@@ -45,12 +46,11 @@ def export_trail(trail_id: str):
     lons = [c[0] for c in coords]
     lats = [c[1] for c in coords]
 
-    bbox = {
-        "south": min(lats),
-        "west": min(lons),
-        "north": max(lats),
-        "east": max(lons),
-    }
+    bbox = BBox(south=min(lats), west=min(lons), north=max(lats), east=max(lons))
+    try:
+        bbox.validate_area()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    result = generate_map.delay(bbox)
+    result = generate_map.delay(bbox.model_dump())
     return TrailExportResponse(job_id=result.id, status="queued")
