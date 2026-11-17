@@ -64,9 +64,13 @@ Pre-built images are published to both **ghcr.io** and **Docker Hub** on every p
 
 2. Create a `.env` file with any needed configuration (see [Configuration](#configuration)):
    ```bash
+   # Append only if missing, so an existing .env (e.g. VITE_ALLOWED_HOSTS) is preserved
+   grep -q '^REDIS_PASSWORD=' .env 2>/dev/null || echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> .env
    # Optional — only needed if serving behind a custom domain
-   echo "VITE_ALLOWED_HOSTS=your.domain.com" > .env
+   echo "VITE_ALLOWED_HOSTS=your.domain.com" >> .env
    ```
+
+   > **Breaking change:** `REDIS_PASSWORD` is now required. Existing deployments that upgrade without it set will fail to start.
 
 3. Start the services:
    ```bash
@@ -169,7 +173,8 @@ Configuration is via environment variables (set in `docker-compose.yml`):
 
 | Variable            | Default                                  | Description                          |
 |---------------------|------------------------------------------|--------------------------------------|
-| `REDIS_URL`         | `redis://redis:6379/0`                   | Redis connection URL                 |
+| `REDIS_PASSWORD`    | *(required)*                             | Redis password (Redis is not exposed on the host) |
+| `REDIS_URL`         | `redis://redis:6379/0`                   | Redis connection URL (compose adds the password) |
 | `DATA_DIR`          | `/data/jobs`                             | Directory for job output files       |
 | `MKGMAP_JAR`        | `/opt/mkgmap/mkgmap.jar`                 | Path to mkgmap JAR                   |
 | `SPLITTER_JAR`      | `/opt/splitter/splitter.jar`             | Path to splitter JAR                 |

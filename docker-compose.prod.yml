@@ -1,8 +1,7 @@
 services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:?set REDIS_PASSWORD}
     volumes:
       - redis-data:/data
 
@@ -11,7 +10,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
       - DATA_DIR=/data/jobs
     volumes:
       - job-data:/data/jobs
@@ -22,7 +21,7 @@ services:
     image: ghcr.io/bearyjd/trailforge-backend:latest
     command: celery -A app.tasks.celery_app:celery_app worker --loglevel=info --concurrency=2
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
       - DATA_DIR=/data/jobs
     volumes:
       - job-data:/data/jobs
