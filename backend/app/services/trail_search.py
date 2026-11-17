@@ -120,6 +120,8 @@ def fetch_trail(trail_id: str) -> TrailFeature | None:
     if not trail_id.startswith("way_"):
         return None
     osm_id = trail_id.removeprefix("way_")
+    if not (osm_id.isascii() and osm_id.isdigit()):
+        return None
     query = f"[out:json]; way({osm_id}); out geom;"
 
     with httpx.Client(timeout=30) as client:
