@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { markLoginPending } from '@/lib/authDeepLink';
 
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -30,6 +31,7 @@ export default function AuthScreen() {
     if (error) {
       Alert.alert('Error', "Couldn't send link — check your email address");
     } else {
+      await markLoginPending(trimmed);
       setSent(true);
     }
   };
