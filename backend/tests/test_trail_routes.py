@@ -109,3 +109,11 @@ def test_export_trail_near_pole_bbox_clamped_not_500():
     assert resp.status_code == 200
     payload = mock_task.delay.call_args.args[0]
     assert payload["north"] <= 90 and payload["east"] <= 180
+
+
+def test_export_trail_invalid_coords_gives_generic_400():
+    resp, mock_task = _export_with_coords([[8.5, 95.0], [8.5, 96.0]])
+    assert resp.status_code == 400
+    assert "pydantic" not in resp.text.lower()
+    assert "errors.pydantic.dev" not in resp.text
+    mock_task.delay.assert_not_called()

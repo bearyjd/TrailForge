@@ -57,6 +57,9 @@ def export_trail(trail_id: str):
             north=min(max(lats) + _BBOX_PADDING_DEG, 90.0),
             east=min(max(lons) + _BBOX_PADDING_DEG, 180.0),
         )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Trail has invalid coordinates")
+    try:
         bbox.validate_area()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
