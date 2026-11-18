@@ -6,7 +6,7 @@ import os
 from app.config import DATA_DIR, JOB_RETENTION_HOURS
 from app.tasks.celery_app import celery_app
 from app.services.osm_downloader import download_osm_data
-from app.services.job_cleanup import cleanup_old_jobs, mark_job_dir
+from app.services.job_cleanup import cleanup_old_jobs, mark_job_dir, touch_job_dir
 from app.services.map_compiler import convert_to_pbf, run_splitter, run_mkgmap
 
 logger = logging.getLogger(__name__)
@@ -44,21 +44,22 @@ def generate_map(self, bbox: dict):
     try:
         # Step 1: Fetch OSM data from the Overpass API (auto-tiles large areas)
         def on_progress(msg):
+            touch_job_dir(job_dir)  # dir mtime drives retention; keep running jobs fresh
             self.update_state(state="PROGRESS", meta={"step": msg})
 
-        self.update_state(state="PROGRESS", meta={"step": "Downloading OSM data..."})
+        on_progress("Downloading OSM data...")
         osm_file = download_osm_data(bbox, job_dir, progress_callback=on_progress)
 
         # Step 2: Convert .osm XML to .osm.pbf for lower memory usage
-        self.update_state(state="PROGRESS", meta={"step": "Converting to PBF..."})
+        on_progress("Converting to PBF...")
         pbf_file = convert_to_pbf(osm_file, job_dir)
 
         # Step 3: Split the PBF into manageable tile chunks
-        self.update_state(state="PROGRESS", meta={"step": "Splitting map tiles..."})
+        on_progress("Splitting map tiles...")
         run_splitter(pbf_file, job_dir)
 
         # Step 4: Compile split tiles into the final Garmin IMG file
-        self.update_state(state="PROGRESS", meta={"step": "Compiling Garmin IMG..."})
+        on_progress("Compiling Garmin IMG...")
         run_mkgmap(job_dir)
 
         img_path = os.path.join(job_dir, "gmapsupp.img")

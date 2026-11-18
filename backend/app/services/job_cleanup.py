@@ -18,6 +18,14 @@ def mark_job_dir(job_dir: str) -> None:
         pass
 
 
+def touch_job_dir(job_dir: str) -> None:
+    """Refresh ``job_dir``'s mtime so a long-running job is not expired mid-run."""
+    try:
+        os.utime(job_dir)
+    except OSError:
+        logger.warning("Failed to refresh mtime of %s", job_dir, exc_info=True)
+
+
 def cleanup_old_jobs(data_dir: str, retention_hours: float) -> int:
     """Delete app-created job directories (see ``JOB_MARKER``) under ``data_dir`` older than the retention window.
 

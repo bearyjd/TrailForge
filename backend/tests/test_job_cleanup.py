@@ -1,8 +1,10 @@
 import os
 import time
+
+import pytest
 from unittest.mock import patch
 
-from app.services.job_cleanup import JOB_MARKER, cleanup_old_jobs, mark_job_dir
+from app.services.job_cleanup import JOB_MARKER, cleanup_old_jobs, mark_job_dir, touch_job_dir
 
 
 def _make_job(root, name, age_seconds, marked=True):
@@ -108,3 +110,53 @@ def test_generate_map_survives_cleanup_failure(tmp_path):
     assert result.get() == {"filename": "gmapsupp.img"}
     job_dirs = [d for d in tmp_path.iterdir() if d.is_dir()]
     assert len(job_dirs) == 1 and (job_dirs[0] / JOB_MARKER).is_file()
+
+
+def test_touch_job_dir_protects_a_running_job_from_cleanup(tmp_path):
+    job = _make_job(tmp_path, "running", 48 * 3600)
+    touch_job_dir(str(job))
+
+    assert cleanup_old_jobs(str(tmp_path), retention_hours=1) == 0
+    assert job.exists()
+
+
+def test_touch_job_dir_ignores_missing_dir(tmp_path):
+    touch_job_dir(str(tmp_path / "gone"))
+
+
+def test_generate_map_refreshes_job_dir_mtime_on_progress(tmp_path):
+    from app.tasks import map_tasks
+
+    seen = []
+
+    def fake_download(bbox, job_dir, progress_callback=None):
+        old = time.time() - 48 * 3600
+        os.utime(job_dir, (old, old))
+        progress_callback("tile 1/9")
+        seen.append(os.stat(job_dir).st_mtime)
+        return "a.osm"
+
+    def fake_mkgmap(job_dir):
+        open(os.path.join(job_dir, "gmapsupp.img"), "wb").close()
+
+    with patch.object(map_tasks, "DATA_DIR", str(tmp_path)), \
+         patch.object(map_tasks, "download_osm_data", side_effect=fake_download), \
+         patch.object(map_tasks, "convert_to_pbf", return_value="a.pbf"), \
+         patch.object(map_tasks, "run_splitter"), \
+         patch.object(map_tasks, "run_mkgmap", side_effect=fake_mkgmap), \
+         patch.object(map_tasks.generate_map, "update_state"):
+        map_tasks.generate_map.apply(args=[{"south": 0, "west": 0, "north": 1, "east": 1}]).get()
+
+    assert time.time() - seen[0] < 60
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [(None, 24.0), ("6", 6.0), ("0.5", 0.5), ("", 24.0), ("abc", 24.0), ("0", 24.0), ("-3", 24.0), ("nan", 24.0), ("inf", 24.0)],
+)
+def test_parse_retention_hours_falls_back_safely(raw, expected, caplog):
+    from app.config import parse_retention_hours
+
+    assert parse_retention_hours(raw) == expected
+    if raw not in (None, "6", "0.5"):
+        assert "JOB_RETENTION_HOURS" in caplog.text
