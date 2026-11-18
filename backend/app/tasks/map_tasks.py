@@ -1,12 +1,15 @@
 """Celery task that orchestrates the full OSM-to-Garmin-IMG pipeline."""
 
+import logging
 import os
 
 from app.config import DATA_DIR, JOB_RETENTION_HOURS
 from app.tasks.celery_app import celery_app
 from app.services.osm_downloader import download_osm_data
-from app.services.job_cleanup import cleanup_old_jobs
+from app.services.job_cleanup import cleanup_old_jobs, mark_job_dir
 from app.services.map_compiler import convert_to_pbf, run_splitter, run_mkgmap
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, name="generate_map")
@@ -29,10 +32,14 @@ def generate_map(self, bbox: dict):
         FileNotFoundError: If mkgmap does not produce the expected output.
     """
     # Expire old job directories (including failed ones kept for debugging)
-    cleanup_old_jobs(DATA_DIR, JOB_RETENTION_HOURS)
+    try:
+        cleanup_old_jobs(DATA_DIR, JOB_RETENTION_HOURS)
+    except Exception:
+        logger.warning("Old-job cleanup failed; continuing", exc_info=True)
 
     job_dir = os.path.join(DATA_DIR, self.request.id)
     os.makedirs(job_dir, exist_ok=True)
+    mark_job_dir(job_dir)
 
     try:
         # Step 1: Fetch OSM data from the Overpass API (auto-tiles large areas)
