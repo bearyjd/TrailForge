@@ -53,14 +53,17 @@ def generate_map(self, bbox: dict):
         # Step 2: Convert .osm XML to .osm.pbf for lower memory usage
         on_progress("Converting to PBF...")
         pbf_file = convert_to_pbf(osm_file, job_dir)
+        touch_job_dir(job_dir)
 
         # Step 3: Split the PBF into manageable tile chunks
         on_progress("Splitting map tiles...")
         run_splitter(pbf_file, job_dir)
+        touch_job_dir(job_dir)
 
         # Step 4: Compile split tiles into the final Garmin IMG file
         on_progress("Compiling Garmin IMG...")
         run_mkgmap(job_dir)
+        touch_job_dir(job_dir)
 
         img_path = os.path.join(job_dir, "gmapsupp.img")
         if not os.path.isfile(img_path):

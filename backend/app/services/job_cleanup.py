@@ -31,7 +31,7 @@ def cleanup_old_jobs(data_dir: str, retention_hours: float) -> int:
 
     Args:
         data_dir: Root directory containing one sub-directory per job.
-        retention_hours: Maximum age in hours; ``<= 0`` disables cleanup.
+        retention_hours: Maximum age in hours; non-positive values are ignored (defence in depth; config never produces them).
 
     Returns:
         Number of job directories removed.

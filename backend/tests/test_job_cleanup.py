@@ -152,11 +152,49 @@ def test_generate_map_refreshes_job_dir_mtime_on_progress(tmp_path):
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
-    [(None, 24.0), ("6", 6.0), ("0.5", 0.5), ("", 24.0), ("abc", 24.0), ("0", 24.0), ("-3", 24.0), ("nan", 24.0), ("inf", 24.0)],
+    [(None, 24.0), ("6", 6.0), ("", 24.0), ("abc", 24.0), ("0", 24.0), ("-3", 24.0), ("nan", 24.0), ("inf", 24.0)],
 )
 def test_parse_retention_hours_falls_back_safely(raw, expected, caplog):
     from app.config import parse_retention_hours
 
     assert parse_retention_hours(raw) == expected
-    if raw not in (None, "6", "0.5"):
+    if raw not in (None, "6"):
         assert "JOB_RETENTION_HOURS" in caplog.text
+
+
+def test_parse_retention_hours_raises_tiny_values_to_the_floor(caplog):
+    from app.config import MIN_RETENTION_HOURS, parse_retention_hours
+
+    assert MIN_RETENTION_HOURS == 1.0
+    assert parse_retention_hours("0.01") == 1.0
+    assert "JOB_RETENTION_HOURS" in caplog.text
+    caplog.clear()
+    assert parse_retention_hours("24") == 24.0
+    assert parse_retention_hours("1") == 1.0
+    assert caplog.text == ""
+
+
+def test_generate_map_touches_job_dir_after_each_long_step(tmp_path):
+    from app.tasks import map_tasks
+
+    events = []
+
+    def step(name, ret=None):
+        def f(*a, **k):
+            events.append(name)
+            if name == "mkgmap":
+                open(os.path.join(a[0], "gmapsupp.img"), "wb").close()
+            return ret
+        return f
+
+    with patch.object(map_tasks, "DATA_DIR", str(tmp_path)), \
+         patch.object(map_tasks, "touch_job_dir", side_effect=lambda d: events.append("touch")), \
+         patch.object(map_tasks, "download_osm_data", side_effect=step("download", "a.osm")), \
+         patch.object(map_tasks, "convert_to_pbf", side_effect=step("pbf", "a.pbf")), \
+         patch.object(map_tasks, "run_splitter", side_effect=step("split")), \
+         patch.object(map_tasks, "run_mkgmap", side_effect=step("mkgmap")), \
+         patch.object(map_tasks.generate_map, "update_state"):
+        map_tasks.generate_map.apply(args=[{"south": 0, "west": 0, "north": 1, "east": 1}]).get()
+
+    for name in ("pbf", "split", "mkgmap"):
+        assert events[events.index(name) + 1] == "touch", name

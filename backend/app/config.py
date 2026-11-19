@@ -15,6 +15,8 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 DATA_DIR = os.getenv("DATA_DIR", "/data/jobs")
 
 DEFAULT_JOB_RETENTION_HOURS = 24.0
+# Floor so cleanup cannot expire a job that is still running (mtime only refreshes at step boundaries)
+MIN_RETENTION_HOURS = 1.0
 
 
 def parse_retention_hours(raw: str | None) -> float:
@@ -32,6 +34,11 @@ def parse_retention_hours(raw: str | None) -> float:
             DEFAULT_JOB_RETENTION_HOURS,
         )
         return DEFAULT_JOB_RETENTION_HOURS
+    if value < MIN_RETENTION_HOURS:
+        logging.getLogger(__name__).warning(
+            "JOB_RETENTION_HOURS=%r is below the minimum; using %s", raw, MIN_RETENTION_HOURS
+        )
+        return MIN_RETENTION_HOURS
     return value
 
 

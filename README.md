@@ -176,7 +176,7 @@ Configuration is via environment variables (set in `docker-compose.yml`):
 | `REDIS_PASSWORD`    | *(required)*                             | Redis password (Redis is not exposed on the host) |
 | `REDIS_URL`         | `redis://redis:6379/0`                   | Redis connection URL (compose adds the password) |
 | `DATA_DIR`          | `/data/jobs`                             | Directory for job output files       |
-| `JOB_RETENTION_HOURS` | `24`                                  | Hours before job dirs are deleted (must be > 0, else 24 is used); only dirs created by this app (marked `.trailforge-job`) are removed |
+| `JOB_RETENTION_HOURS` | `24`                                  | Hours before job dirs are deleted (default 24; minimum 1, lower values are raised; must exceed the longest job duration). Dirs created before the marker was introduced are never expired (intentional). Only dirs created by this app (marked `.trailforge-job`) are removed |
 | `MKGMAP_JAR`        | `/opt/mkgmap/mkgmap.jar`                 | Path to mkgmap JAR                   |
 | `SPLITTER_JAR`      | `/opt/splitter/splitter.jar`             | Path to splitter JAR                 |
 | `OVERPASS_URL`      | `https://overpass-api.de/api/interpreter`| Primary Overpass API endpoint        |
