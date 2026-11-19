@@ -4,6 +4,8 @@ All settings have sensible defaults for running inside the Docker Compose stack.
 Override via environment variables in production or .env files in development.
 """
 
+import logging
+import math
 import os
 
 # Redis connection used as both Celery broker and result backend
@@ -11,6 +13,37 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
 # Root directory where per-job working directories are created
 DATA_DIR = os.getenv("DATA_DIR", "/data/jobs")
+
+DEFAULT_JOB_RETENTION_HOURS = 24.0
+# Floor so cleanup cannot expire a job that is still running (mtime only refreshes at step boundaries)
+MIN_RETENTION_HOURS = 1.0
+
+
+def parse_retention_hours(raw: str | None) -> float:
+    """Parse JOB_RETENTION_HOURS; fall back to the default (with a warning) if unusable."""
+    if raw is None:
+        return DEFAULT_JOB_RETENTION_HOURS
+    try:
+        value = float(raw)
+    except ValueError:
+        value = math.nan
+    if not math.isfinite(value) or value <= 0:
+        logging.getLogger(__name__).warning(
+            "Invalid JOB_RETENTION_HOURS=%r (need a positive number); using %s",
+            raw,
+            DEFAULT_JOB_RETENTION_HOURS,
+        )
+        return DEFAULT_JOB_RETENTION_HOURS
+    if value < MIN_RETENTION_HOURS:
+        logging.getLogger(__name__).warning(
+            "JOB_RETENTION_HOURS=%r is below the minimum; using %s", raw, MIN_RETENTION_HOURS
+        )
+        return MIN_RETENTION_HOURS
+    return value
+
+
+# Hours to keep job directories before they are deleted
+JOB_RETENTION_HOURS = parse_retention_hours(os.getenv("JOB_RETENTION_HOURS"))
 
 # Path to the mkgmap JAR (converts OSM data to Garmin IMG format)
 MKGMAP_JAR = os.getenv("MKGMAP_JAR", "/opt/mkgmap/mkgmap.jar")
