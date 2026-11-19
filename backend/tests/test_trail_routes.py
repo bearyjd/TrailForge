@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from app.main import app
@@ -63,3 +64,56 @@ def test_export_trail_enqueues_job():
     data = resp.json()
     assert data["job_id"] == "celery-job-abc"
     assert data["status"] == "queued"
+
+
+def _export_with_coords(coords):
+    feature = _SAMPLE_FEATURE.model_copy(
+        update={"geometry": {"type": "LineString", "coordinates": coords}}
+    )
+    with patch("app.api.trail_routes.fetch_trail") as mock_fetch, \
+         patch("app.api.trail_routes.generate_map") as mock_task:
+        mock_fetch.return_value = TrailDetail(**feature.model_dump())
+        mock_task.delay.return_value = MagicMock(id="job-1")
+        resp = client.post("/api/trails/way_1/export/garmin")
+    return resp, mock_task
+
+
+def test_export_trail_rejects_oversized_bbox():
+    resp, mock_task = _export_with_coords([[0.0, 0.0], [10.0, 10.0]])
+    assert resp.status_code == 400
+    assert "exceeds maximum" in resp.json()["detail"]
+    mock_task.delay.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "coords",
+    [
+        [[8.5, 47.1], [8.5, 47.105]],  # ~500 m north-south straight
+        [[8.5, 47.1], [8.505, 47.1]],  # straight east-west
+        [[8.5, 47.1], [8.5001, 47.1001]],  # very short
+        [[8.5, 47.1], [8.5, 47.1]],  # single point
+    ],
+)
+def test_export_trail_short_or_straight_still_exports(coords):
+    resp, mock_task = _export_with_coords(coords)
+    assert resp.status_code == 200
+    payload = mock_task.delay.call_args.args[0]
+    assert payload["south"] < min(c[1] for c in coords)
+    assert payload["north"] > max(c[1] for c in coords)
+    assert payload["west"] < min(c[0] for c in coords)
+    assert payload["east"] > max(c[0] for c in coords)
+
+
+def test_export_trail_near_pole_bbox_clamped_not_500():
+    resp, mock_task = _export_with_coords([[179.9999, 89.9999], [179.9999, 90.0]])
+    assert resp.status_code == 200
+    payload = mock_task.delay.call_args.args[0]
+    assert payload["north"] <= 90 and payload["east"] <= 180
+
+
+def test_export_trail_invalid_coords_gives_generic_400():
+    resp, mock_task = _export_with_coords([[8.5, 95.0], [8.5, 96.0]])
+    assert resp.status_code == 400
+    assert "pydantic" not in resp.text.lower()
+    assert "errors.pydantic.dev" not in resp.text
+    mock_task.delay.assert_not_called()
