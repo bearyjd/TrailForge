@@ -8,6 +8,7 @@ import { useSavedStore } from '@/stores/savedStore';
 import { useOfflineStore } from '@/stores/offlineStore';
 import { fetchTrail, exportTrailToGarmin, pollJobStatus } from '@/api/trailApi';
 import { TILE_STYLE_URL } from '@/constants';
+import { OFFLINE_MAPS_ENABLED } from '@/constants/features';
 import type { Trail } from '@/types/trail';
 
 type ExportState = 'idle' | 'loading' | 'done' | 'error';
@@ -154,6 +155,7 @@ export default function TrailDetailScreen() {
         )}
       </TouchableOpacity>
 
+      {OFFLINE_MAPS_ENABLED && (
       <TouchableOpacity
         style={[styles.btn, styles.btnOffline, (isDownloaded || isDownloading) && styles.btnDisabled]}
         onPress={handleDownloadOffline}
@@ -163,6 +165,7 @@ export default function TrailDetailScreen() {
           {isDownloaded ? '✓ Downloaded' : isDownloading ? 'Downloading…' : 'Download for offline'}
         </Text>
       </TouchableOpacity>
+      )}
 
       <View style={styles.divider} />
 

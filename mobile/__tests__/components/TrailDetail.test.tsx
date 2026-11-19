@@ -53,3 +53,10 @@ it('export button triggers polling and calls Share', async () => {
   fireEvent.press(screen.getByText('Export to Garmin'));
   await waitFor(() => expect(api.exportTrailToGarmin).toHaveBeenCalledWith('way_1'));
 });
+
+it('hides the offline download button while offline maps are disabled', async () => {
+  (api.fetchTrail as jest.Mock).mockResolvedValue(TRAIL);
+  render(<TrailDetailScreen />);
+  await waitFor(() => expect(screen.getByText('Oak Loop')).toBeTruthy());
+  expect(screen.queryByText('Download for offline')).toBeNull();
+});
