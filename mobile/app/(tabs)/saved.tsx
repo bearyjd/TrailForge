@@ -3,6 +3,7 @@ import { FlatList, View, Text, TouchableOpacity, StyleSheet } from 'react-native
 import { router } from 'expo-router';
 import { TrailRow } from '@/components/TrailRow';
 import { useSavedStore } from '@/stores/savedStore';
+import { OFFLINE_MAPS_ENABLED } from '@/constants/features';
 
 export default function SavedScreen() {
   const { savedTrails } = useSavedStore();
@@ -10,9 +11,11 @@ export default function SavedScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.manageBtn} onPress={() => router.push('/offline')}>
-        <Text style={styles.manageBtnText}>🗂 Manage Downloads</Text>
-      </TouchableOpacity>
+      {OFFLINE_MAPS_ENABLED && (
+        <TouchableOpacity style={styles.manageBtn} onPress={() => router.push('/offline')}>
+          <Text style={styles.manageBtnText}>🗂 Manage Downloads</Text>
+        </TouchableOpacity>
+      )}
       {trails.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>No saved trails yet.</Text>
