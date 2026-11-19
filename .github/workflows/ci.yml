@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_call:
 
 permissions:
   contents: read
@@ -13,6 +14,22 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  lock-drift:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      # Regenerates with the same command recorded in the lock header; pins in
+      # the existing lock are kept, so a diff means requirements-dev.txt and
+      # requirements-dev.lock are out of sync.
+      - name: Recompile lock
+        run: uv pip compile --python-version 3.12 --python-platform linux --generate-hashes backend/requirements-dev.txt -o backend/requirements-dev.lock
+      - name: Fail on drift
+        run: git diff --exit-code -- backend/requirements-dev.lock
+
   backend-tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
