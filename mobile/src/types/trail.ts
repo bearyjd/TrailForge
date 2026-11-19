@@ -24,11 +24,13 @@ export interface TrailSearchResponse {
 
 export interface JobStatus {
   job_id: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
-  progress?: string;
-  error?: string;
-  filename?: string;
-  file_size?: number;
+  // Backend falls back to the lowercased Celery state for unknown states.
+  status: 'queued' | 'processing' | 'completed' | 'failed' | (string & {});
+  // Backend serializes unset optional fields as null.
+  progress?: string | null;
+  error?: string | null;
+  filename?: string | null;
+  file_size?: number | null;
 }
 
 export interface ExportResponse {
