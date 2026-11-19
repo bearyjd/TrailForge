@@ -7,6 +7,7 @@ from app.services.trail_search import (
     _trail_type,
     _way_to_feature,
     search_trails,
+    fetch_trail,
 )
 
 
@@ -71,3 +72,10 @@ def test_search_trails_returns_features():
 
     assert len(result.features) == 1
     assert result.features[0].name == "Forest Trail"
+
+
+def test_fetch_trail_rejects_non_numeric_id_without_querying():
+    with patch("app.services.trail_search.httpx.Client") as client:
+        for bad in ["way_1); out;node(1", "way_", "way_12a", "way_-1", "way_1 2", "way_\u0663"]:
+            assert fetch_trail(bad) is None
+        client.assert_not_called()
