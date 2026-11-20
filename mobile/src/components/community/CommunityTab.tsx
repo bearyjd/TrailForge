@@ -10,6 +10,22 @@ interface Props {
   onSignInPress: () => void;
 }
 
+const MAX_ENTRIES = 5;
+
+function newestWithText<T extends { createdAt: string }>(
+  items: T[],
+  getText: (item: T) => string | undefined
+): T[] {
+  return items
+    .filter((item) => (getText(item) ?? '').trim().length > 0)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, MAX_ENTRIES);
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString();
+}
+
 export function CommunityTab({ osmTrailId, onSignInPress }: Props) {
   const session = useCommunityStore((s) => s.session);
   const ratings = useCommunityStore((s) => s.ratings[osmTrailId] ?? []);
@@ -35,6 +51,9 @@ export function CommunityTab({ osmTrailId, onSignInPress }: Props) {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )[0]
     : null;
+
+  const reviews = newestWithText(ratings, (r) => r.review);
+  const conditionNotes = newestWithText(conditions, (c) => c.note);
 
   const handleRatePress = () => {
     if (!session) { onSignInPress(); return; }
@@ -63,6 +82,36 @@ export function CommunityTab({ osmTrailId, onSignInPress }: Props) {
         <View style={styles.conditionRow}>
           <Text style={styles.conditionLabel}>Latest condition: </Text>
           <ConditionBadge tag={latestCondition.tag} />
+        </View>
+      )}
+
+      {reviews.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.subheading}>Reviews</Text>
+          {reviews.map((r) => (
+            <View key={r.id} style={styles.entry}>
+              <View style={styles.entryHeader}>
+                <Text style={styles.entryStars}>{'★'.repeat(r.stars)}</Text>
+                <Text style={styles.entryDate}>{formatDate(r.createdAt)}</Text>
+              </View>
+              <Text style={styles.entryText} numberOfLines={4}>{r.review}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {conditionNotes.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.subheading}>Recent conditions</Text>
+          {conditionNotes.map((c) => (
+            <View key={c.id} style={styles.entry}>
+              <View style={styles.entryHeader}>
+                <ConditionBadge tag={c.tag} />
+                <Text style={styles.entryDate}>{formatDate(c.createdAt)}</Text>
+              </View>
+              <Text style={styles.entryText} numberOfLines={4}>{c.note}</Text>
+            </View>
+          ))}
         </View>
       )}
 
@@ -98,6 +147,13 @@ const styles = StyleSheet.create({
   emptyText: { color: '#aaa', marginBottom: 8 },
   conditionRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   conditionLabel: { color: '#666', fontSize: 14 },
+  section: { marginBottom: 12 },
+  subheading: { fontSize: 15, fontWeight: '600', marginBottom: 6 },
+  entry: { marginBottom: 8 },
+  entryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  entryStars: { color: '#f4a829', fontSize: 14 },
+  entryDate: { color: '#888', fontSize: 12 },
+  entryText: { color: '#333', fontSize: 14 },
   actions: { flexDirection: 'row', gap: 10 },
   actionBtn: {
     flex: 1,
