@@ -1,6 +1,7 @@
 """Trail discovery API routes."""
 
 from fastapi import APIRouter, HTTPException
+from pydantic import ValidationError
 
 from app.config import MAX_BBOX_AREA_DEG2
 from app.models.schemas import BBox
@@ -45,22 +46,12 @@ def export_trail(trail_id: str):
         raise HTTPException(status_code=404, detail="Trail not found")
 
     coords = trail.geometry["coordinates"]
-    lons = [c[0] for c in coords]
-    lats = [c[1] for c in coords]
-
-    # Pad so short or straight trails (thin/zero-area boxes) still export;
-    # only an oversized area is rejected.
     try:
-        bbox = BBox(
-            south=max(min(lats) - _BBOX_PADDING_DEG, -90.0),
-            west=max(min(lons) - _BBOX_PADDING_DEG, -180.0),
-            north=min(max(lats) + _BBOX_PADDING_DEG, 90.0),
-            east=min(max(lons) + _BBOX_PADDING_DEG, 180.0),
+        bbox = BBox.from_coords(
+            [c[1] for c in coords], [c[0] for c in coords], _BBOX_PADDING_DEG
         )
-    except ValueError:
+    except ValidationError:
         raise HTTPException(status_code=400, detail="Trail has invalid coordinates")
-    try:
-        bbox.validate_area()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

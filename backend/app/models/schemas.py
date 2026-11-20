@@ -1,5 +1,7 @@
 """Pydantic schemas for API request/response validation."""
 
+from collections.abc import Sequence
+
 from pydantic import BaseModel, field_validator
 from app.config import MAX_BBOX_AREA_DEG2
 
@@ -27,6 +29,25 @@ class BBox(BaseModel):
         if not -180 <= v <= 180:
             raise ValueError("Longitude must be between -180 and 180")
         return v
+
+    @classmethod
+    def from_coords(
+        cls, lats: Sequence[float], lons: Sequence[float], padding: float = 0.001
+    ) -> "BBox":
+        """Build a padded, area-validated bbox enclosing the given coordinates.
+
+        Padding lets short or straight trails (thin/zero-area boxes) still
+        export; edges are clamped to valid lat/lon. Raises ``ValueError``
+        (``ValidationError`` for invalid coordinates) otherwise.
+        """
+        box = cls(
+            south=max(min(lats) - padding, -90.0),
+            west=max(min(lons) - padding, -180.0),
+            north=min(max(lats) + padding, 90.0),
+            east=min(max(lons) + padding, 180.0),
+        )
+        box.validate_area()
+        return box
 
     def area_deg2(self) -> float:
         """Calculate the approximate area of the bounding box in square degrees."""
