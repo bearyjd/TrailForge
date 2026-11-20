@@ -92,4 +92,51 @@ describe('CommunityTab', () => {
     // SubmitRatingSheet mock renders a View with testID="bottom-sheet" when visible
     expect(queryByTestId('bottom-sheet')).toBeTruthy();
   });
+
+  describe('review and note text', () => {
+    const withStore = (ratings: unknown[], conditions: unknown[]) => {
+      const store = { ...baseStore, ratings: { 'trail-42': ratings } as never, conditions: { 'trail-42': conditions } as never };
+      mockStore.mockImplementation((selector: (s: typeof store) => unknown) => selector(store));
+    };
+    const rating = (n: number, review?: string) => ({
+      id: `r${n}`, userId: 'u1', osmTrailId: 'trail-42', stars: 4, review,
+      createdAt: `2026-01-${String(n).padStart(2, '0')}T00:00:00Z`,
+    });
+    const condition = (n: number, note?: string) => ({
+      id: `c${n}`, userId: 'u1', osmTrailId: 'trail-42', tag: 'muddy' as const, note,
+      createdAt: `2026-01-${String(n).padStart(2, '0')}T00:00:00Z`,
+    });
+
+    it('renders review and note text', () => {
+      withStore([rating(1, 'Great views')], [condition(1, 'Very slippery')]);
+      const { getByText } = render(<CommunityTab osmTrailId="trail-42" onSignInPress={jest.fn()} />);
+      expect(getByText('Reviews')).toBeTruthy();
+      expect(getByText('Great views')).toBeTruthy();
+      expect(getByText('Recent conditions')).toBeTruthy();
+      expect(getByText('Very slippery')).toBeTruthy();
+    });
+
+    it('hides entries without text and omits empty sections', () => {
+      withStore([rating(1), rating(2, '   ')], [condition(1)]);
+      const { queryByText } = render(<CommunityTab osmTrailId="trail-42" onSignInPress={jest.fn()} />);
+      expect(queryByText('Reviews')).toBeNull();
+      expect(queryByText('Recent conditions')).toBeNull();
+    });
+
+    it('shows newest first and caps at 5 each', () => {
+      withStore(
+        [1, 2, 3, 4, 5, 6, 7].map((n) => rating(n, `review ${n}`)),
+        [1, 2, 3, 4, 5, 6, 7].map((n) => condition(n, `note ${n}`))
+      );
+      const { queryByText, getAllByText } = render(<CommunityTab osmTrailId="trail-42" onSignInPress={jest.fn()} />);
+      expect(queryByText('review 7')).toBeTruthy();
+      expect(queryByText('review 3')).toBeTruthy();
+      expect(queryByText('review 2')).toBeNull();
+      expect(queryByText('note 7')).toBeTruthy();
+      expect(queryByText('note 2')).toBeNull();
+      expect(getAllByText(/^review \d$/).map((n) => n.props.children)).toEqual([
+        'review 7', 'review 6', 'review 5', 'review 4', 'review 3',
+      ]);
+    });
+  });
 });
