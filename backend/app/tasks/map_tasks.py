@@ -4,6 +4,7 @@ import logging
 import os
 
 from app.config import DATA_DIR, JOB_RETENTION_HOURS
+from app.models.schemas import BBox
 from app.services.job_paths import OUTPUT_FILENAME
 from app.tasks.celery_app import celery_app
 from app.services.osm_downloader import download_osm_data
@@ -30,8 +31,14 @@ def generate_map(self, bbox: dict):
         Dict with key ``filename`` on success.
 
     Raises:
+        ValueError: If ``bbox`` is malformed, out of range, or too large/small.
         FileNotFoundError: If mkgmap does not produce the expected output.
     """
+    # Validate at the task boundary: the queue payload is an untyped dict.
+    bbox = BBox(**bbox)
+    bbox.validate_area()
+    bbox = bbox.model_dump()
+
     # Expire old job directories (including failed ones kept for debugging)
     try:
         cleanup_old_jobs(DATA_DIR, JOB_RETENTION_HOURS)
