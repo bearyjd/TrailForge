@@ -7,7 +7,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 
-from app.config import DATA_DIR
+from app.services.job_paths import OUTPUT_FILENAME, output_path
 from app.models.schemas import GenerateRequest, GenerateResponse, JobStatus
 from app.tasks.map_tasks import generate_map
 
@@ -88,12 +88,12 @@ def get_status(job_id: str):
         )
     elif result.state == "SUCCESS":
         # Include file size so the UI can warn about watch storage
-        img_path = os.path.join(DATA_DIR, job_id, "gmapsupp.img")
+        img_path = output_path(job_id)
         file_size = os.path.getsize(img_path) if os.path.isfile(img_path) else None
         return JobStatus(
             job_id=job_id,
             status="completed",
-            filename="gmapsupp.img",
+            filename=OUTPUT_FILENAME,
             file_size=file_size,
         )
     elif result.state == "FAILURE":
@@ -160,10 +160,10 @@ def download_file(job_id: str, filename: str, request: Request):
         HTTPException: 400 for invalid filename, 404 if file is missing,
             416 if the Range header is unsatisfiable.
     """
-    if filename != "gmapsupp.img":
+    if filename != OUTPUT_FILENAME:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    file_path = os.path.join(DATA_DIR, job_id, filename)
+    file_path = output_path(job_id)
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="File not found")
 

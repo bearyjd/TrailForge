@@ -54,15 +54,17 @@ export default function TrailDetailScreen() {
     try {
       const { job_id } = await exportTrailToGarmin(trail.id);
       let status = 'queued';
+      let filename: string | null | undefined;
       while (status !== 'completed' && status !== 'failed') {
         await new Promise((r) => setTimeout(r, 3000));
         const jobStatus = await pollJobStatus(job_id);
         status = jobStatus.status;
+        filename = jobStatus.filename;
         if (jobStatus.progress) setExportProgress(jobStatus.progress);
       }
-      if (status === 'completed') {
+      if (status === 'completed' && filename) {
         setExportState('done');
-        const downloadUrl = `${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api'}/download/${job_id}/gmapsupp.img`;
+        const downloadUrl = `${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api'}/download/${job_id}/${filename}`;
         await Share.share({ url: downloadUrl, message: `TrailForge: ${trail.name} — Garmin map ready` });
       } else {
         setExportState('error');

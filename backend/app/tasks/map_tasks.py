@@ -4,6 +4,7 @@ import logging
 import os
 
 from app.config import DATA_DIR, JOB_RETENTION_HOURS
+from app.services.job_paths import OUTPUT_FILENAME
 from app.tasks.celery_app import celery_app
 from app.services.osm_downloader import download_osm_data
 from app.services.job_cleanup import cleanup_old_jobs, mark_job_dir, touch_job_dir
@@ -65,11 +66,11 @@ def generate_map(self, bbox: dict):
         run_mkgmap(job_dir)
         touch_job_dir(job_dir)
 
-        img_path = os.path.join(job_dir, "gmapsupp.img")
+        img_path = os.path.join(job_dir, OUTPUT_FILENAME)
         if not os.path.isfile(img_path):
-            raise FileNotFoundError("mkgmap did not produce gmapsupp.img")
+            raise FileNotFoundError(f"mkgmap did not produce {OUTPUT_FILENAME}")
 
-        return {"filename": "gmapsupp.img"}
+        return {"filename": OUTPUT_FILENAME}
 
     except Exception as e:
         # Keep the job directory for post-mortem debugging; retention cleanup expires it
